@@ -294,7 +294,7 @@ jobs:
           fi
 
       - name: Create Bootimgs Folder and Copy Images
-        if: ${{ inputs.android_version == 'android12' || inputs.android_version == 'android13' }}
+        if: ${{ inputs.android_version == 'android13' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           mkdir bootimgs
@@ -309,7 +309,7 @@ jobs:
           gzip -n -k -f -9 ./Image > ./Image.gz
 
       - name: Create Bootimgs Folder and Copy Images
-        if: ${{ inputs.android_version == 'android14' || inputs.android_version == 'android15' }}
+        if: ${{ inputs.android_version == 'android15' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           mkdir bootimgs
@@ -346,15 +346,6 @@ jobs:
           mv ../Image.gz ./Image.gz
           zip -r "../$ZIP_NAME" ./*
           rm ./Image.gz
-
-      - name: Run Boot Image ${{ inputs.android_version }} Build Script
-        if: ${{ inputs.android_version == 'android12' }}
-        run: |
-          echo "Changing to configuration directory: $CONFIG..."
-          cd bootimgs
-
-          GKI_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-"${{ inputs.os_patch_level }}"_r1.zip
-          FALLBACK_URL=https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
           
           # Check if the GKI URL is available
           echo "Checking if GKI kernel URL is reachable: $GKI_URL"
@@ -398,7 +389,7 @@ jobs:
           cp ./boot-lz4.img ../${{ inputs.kernel_version }}.${{ inputs.sub_level }}-${{ inputs.android_version }}-${{ inputs.os_patch_level }}-boot-lz4.img
 
       - name: Run Boot Image ${{ inputs.android_version }} Build Script
-        if: ${{ inputs.android_version == 'android13' || inputs.android_version == 'android14' || inputs.android_version == 'android15' }}
+        if: ${{ inputs.android_version == 'android13' || inputs.android_version == 'android15' }}
         run: |
           cd bootimgs
           
