@@ -18,7 +18,7 @@ on:
         type: choice
         options:
           - ubuntu-22.04
-          - ubuntu-local
+          - ubuntu-22.04-local
         default: ubuntu-22.04
       lto_type:
         description: "Choose LTO type (full will not run on basic runners)"
@@ -29,8 +29,17 @@ on:
           - thin
           - none
         default: thin
-      next_branch:
-        description: "Choose next branch"
+      kernelsu_variant:
+        description: "Choose KernelSU"
+        required: true
+        type: choice
+        options:
+          - Official
+          - Next
+          - Placeholder
+        default: Next
+      kernelsu_branch:
+        description: "Choose ksu branch"
         required: true
         type: choice
         options:
@@ -38,7 +47,7 @@ on:
           - Dev
           - Other
         default: Stable
-      next_branch_other:
+      kernelsu_branch_other:
         description: "If 'Other' is selected, specify your custom branch"
         required: false
         type: string  # This input is required if 'Other' is chosen
@@ -46,19 +55,30 @@ on:
 
 jobs:
   build-kernel-a13-5-15:
-    uses: ./.github/workflows/build-kernel-a13-5.15.yml
+    uses: ./.github/workflows/kernel-a13-5.15.yml
     secrets: inherit
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
-      next_branch: ${{ inputs.next_branch }}
-      next_branch_other: ${{ inputs.next_branch_other }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
+
+  build-kernel-a15-6-6:
+    uses: ./.github/workflows/kernel-a15-6.6.yml
+    secrets: inherit
+    with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}
+      kernelsu_branch: ${{ inputs.kernelsu_branch }}
+      kernelsu_branch_other: ${{ inputs.kernelsu_branch_other }}
 
   trigger-release:
     runs-on: ubuntu-latest
     needs:
         - build-kernel-a13-5-15
-
+        - build-kernel-a15-6-6
     if: ${{ inputs.make_release }}
     env:
       REPO_OWNER: WildPlusKernel
@@ -90,12 +110,12 @@ jobs:
       - name: Determine the branch for KernelSU-Next
         run: |
           # Determine the branch based on user input
-          if [[ "${{ inputs.next_branch }}" == "Stable" ]]; then
+          if [[ "${{ inputs.kernelsu_branch }}" == "Stable" ]]; then
             BRANCH="Stable"
-          elif [[ "${{ inputs.next_branch }}" == "Dev" ]]; then
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Dev" ]]; then
             BRANCH="next"
-          elif [[ "${{ inputs.next_branch }}" == "Other" && -n "${{ inputs.next_branch_other }}" ]]; then
-            BRANCH="${{ inputs.next_branch_other }}"
+          elif [[ "${{ inputs.kernelsu_branch }}" == "Other" && -n "${{ inputs.kernelsu_branch_other }}" ]]; then
+            BRANCH="${{ inputs.kernelsu_branch_other }}"
           else
             echo "Error: Custom branch not provided for 'Other'" >&2
             exit 1
@@ -154,6 +174,7 @@ jobs:
 
           declare -A BRANCH_MAP=(
             ["gki_android13_5_15"]="gki-android13-5.15"
+            ["gki_android15_6_6"]="gki-android15-6.6"
           )
 
           for var_name in "${!BRANCH_MAP[@]}"; do
@@ -176,12 +197,13 @@ jobs:
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_NOTES" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "LTO TYPE: $lto_type" >> $GITHUB_ENV
+          echo "LTO TYPE: ${{ inputs.lto_type }}" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "Commit Hashes & Links:" >> $GITHUB_ENV
           echo "KernelSU-Next: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
-          echo "[SUSFS4KSU](https://gitlab.com/simonpunk/susfs4ksu):" >> $GITHUB_ENV
+          echo "SUSFS4KSU:" >> $GITHUB_ENV
           echo "gki-android13-5.15: [$COMMIT_HASH_gki_android13_5_15]($COMMIT_URL_gki_android13_5_15)" >> $GITHUB_ENV
+          echo "gki-android15-6.6: [$COMMIT_HASH_gki_android15_6_6]($COMMIT_URL_gki_android14_6_1)" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
           
       # Get the Latest Tag from GitHub
@@ -204,7 +226,7 @@ jobs:
             # Create the tag in the repository
             git tag $NEW_TAG
             git push origin $NEW_TAG
-
+            
       # Download Artifacts for A12 (Only if A12 Build is successful or input is true or empty)
       - name: Download Artifacts
         uses: actions/download-artifact@v4
