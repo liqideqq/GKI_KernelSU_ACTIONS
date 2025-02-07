@@ -24,13 +24,28 @@ on:
           - thin
           - none
         default: thin
+      build_a12_5_10:
+        description: 'Build Android 12 5.10 kernel?'
+        required: true
+        type: boolean
+        default: true
+      build_a13_5_10:
+        description: 'Build Android 13 5.10 kernel?'
+        required: true
+        type: boolean
+        default: true
       build_a13_5_15:
         description: 'Build Android 13 5.15 kernel?'
         required: true
         type: boolean
         default: true
-      build_a15_6_6:
-        description: 'Build Android 15 6.6 kernel?'
+      build_a14_5_15:
+        description: 'Build Android 14 5.15 kernel?'
+        required: true
+        type: boolean
+        default: true
+      build_a14_6_1:
+        description: 'Build Android 14 6.1 kernel?'
         required: true
         type: boolean
         default: true
@@ -55,6 +70,26 @@ on:
         default: ""  # Default is empty, but can be filled in if 'Other' is selected
 
 jobs:
+  build-kernel-a12-5-10:
+    uses: ./.github/workflows/build-kernel-a12-5.10.yml
+    secrets: inherit
+    if: ${{ inputs.build_a12_5_10 }}
+    with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
+      next_branch: ${{ inputs.next_branch }}
+      next_branch_other: ${{ inputs.next_branch_other }}
+
+  build-kernel-a13-5-10:
+    uses: ./.github/workflows/build-kernel-a13-5.10.yml
+    secrets: inherit
+    if: ${{ inputs.build_a13_5_10 }}
+    with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
+      next_branch: ${{ inputs.next_branch }}
+      next_branch_other: ${{ inputs.next_branch_other }}
+
   build-kernel-a13-5-15:
     uses: ./.github/workflows/build-kernel-a13-5.15.yml
     secrets: inherit
@@ -65,10 +100,20 @@ jobs:
       next_branch: ${{ inputs.next_branch }}
       next_branch_other: ${{ inputs.next_branch_other }}
 
-  build-kernel-a15-6-6:
-    uses: ./.github/workflows/build-kernel-a15-6.6.yml
+  build-kernel-a14-5-15:
+    uses: ./.github/workflows/build-kernel-a14-5.15.yml
     secrets: inherit
-    if: ${{ inputs.build_a15_6_6 }}
+    if: ${{ inputs.build_a14_5_15 }}
+    with:
+      runner: ${{ inputs.runner }}
+      lto_type: ${{ inputs.lto_type }}
+      next_branch: ${{ inputs.next_branch }}
+      next_branch_other: ${{ inputs.next_branch_other }}
+
+  build-kernel-a14-6-1:
+    uses: ./.github/workflows/build-kernel-a14-6.1.yml
+    secrets: inherit
+    if: ${{ inputs.build_a14_6_1 }}
     with:
       runner: ${{ inputs.runner }}
       lto_type: ${{ inputs.lto_type }}
@@ -78,8 +123,11 @@ jobs:
   trigger-release:
     runs-on: ubuntu-latest
     needs:
+        - build-kernel-a12-5-10
+        - build-kernel-a13-5-10
         - build-kernel-a13-5-15
-        - build-kernel-a15-6-6
+        - build-kernel-a14-5-15
+        - build-kernel-a14-6-1
     if: ${{ inputs.make_release }}
     env:
       REPO_OWNER: WildPlusKernel
@@ -182,8 +230,11 @@ jobs:
           GITLAB_REPO="susfs4ksu"
 
           declare -A BRANCH_MAP=(
+            ["gki_android12_5_10"]="gki-android12-5.10"
+            ["gki_android13_5_10"]="gki-android13-5.10"
             ["gki_android13_5_15"]="gki-android13-5.15"
-            ["gki_android15_6_6"]="gki-android15-6.6"
+            ["gki_android14_5_15"]="gki-android14-5.15"
+            ["gki_android14_6_1"]="gki-android14-6.1"
           )
 
           for var_name in "${!BRANCH_MAP[@]}"; do
@@ -211,8 +262,11 @@ jobs:
           echo "Commit Hashes & Links:" >> $GITHUB_ENV
           echo "KernelSU-Next: [$KSU_REF]($KSU_URL)" >> $GITHUB_ENV
           echo "[SUSFS4KSU](https://gitlab.com/simonpunk/susfs4ksu):" >> $GITHUB_ENV
+          echo "gki-android12-5.10: [$COMMIT_HASH_gki_android12_5_10]($COMMIT_URL_gki_android12_5_10)" >> $GITHUB_ENV
+          echo "gki-android13-5.10: [$COMMIT_HASH_gki_android13_5_10]($COMMIT_URL_gki_android13_5_10)" >> $GITHUB_ENV
           echo "gki-android13-5.15: [$COMMIT_HASH_gki_android13_5_15]($COMMIT_URL_gki_android13_5_15)" >> $GITHUB_ENV
-          echo "gki-android15-6.6: [$COMMIT_HASH_gki_android15_6_6]($COMMIT_URL_gki_android15_6_6)" >> $GITHUB_ENV
+          echo "gki-android14-5.15: [$COMMIT_HASH_gki_android14_5_15]($COMMIT_URL_gki_android14_5_15)" >> $GITHUB_ENV
+          echo "gki-android14-6.1: [$COMMIT_HASH_gki_android14_6_1]($COMMIT_URL_gki_android14_6_1)" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
           
       # Get the Latest Tag from GitHub
@@ -221,7 +275,7 @@ jobs:
             # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
             LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v1.5.5-0"
+              LATEST_TAG="v1.5.4-0"
             fi
             
             NEW_TAG=$(echo "$LATEST_TAG" | awk -F- '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-%d", $1, suffix}')
